@@ -16,14 +16,12 @@ class CreateUserProfilesTable extends Migration
         Schema::create('user_profiles', function (Blueprint $table) {
             $table->increments('id');
             $table->integer('user_id')->unsigned();
-            $table->integer('image_id')->unsigned();
             $table->string('display_name')->nullable();
             $table->string('tagline')->nullable();
             $table->string('location')->nullable();
             $table->string('website')->nullable();
             $table->timestamps();
 
-            $table->foreign('image_id')->references('id')->on('images');
             $table->foreign('user_id')->references('id')->on('users');
         });
     }
