@@ -6,17 +6,17 @@ use Illuminate\Database\Eloquent\Model;
 
 class Profile extends Model
 {
-    /**
-     * Mass assignment guarded fields
-     *
-     * @var array
-     */
-    protected $guarded = [];
-    /**
-     * Relations
-     */
+    protected $table = 'user_profiles';
+
+    protected $fillable = ['user_id', 'display_name', 'tagline', 'location', 'website', 'image_id'];
+
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo('App\User');
+    }
+
+    public function image()
+    {
+        return $this->belongsTo('App\Image');
     }
 }
