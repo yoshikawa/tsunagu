@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
 
-class UserRelations extends Migration
+class CreateUserRelationsTable extends Migration
 {
     /**
      * Run the migrations.
@@ -13,7 +13,15 @@ class UserRelations extends Migration
      */
     public function up()
     {
-        //
+        Schema::create('user_relations', function (Blueprint $table) {
+            $table->increments('id');
+            $table->integer('follower_id')->unsigned();
+            $table->integer('followed_id')->unsigned();
+            $table->timestamps();
+
+            $table->foreign('follower_id')->references('id')->on('users')->onDelete('cascade');
+            $table->foreign('followed_id')->references('id')->on('users')->onDelete('cascade');
+        });
     }
 
     /**
@@ -23,6 +31,6 @@ class UserRelations extends Migration
      */
     public function down()
     {
-        //
+        Schema::dropIfExists('user_relations');
     }
 }

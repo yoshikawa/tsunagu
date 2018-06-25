@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
 
-class UsersInfo extends Migration
+class CreateUsersInfoTable extends Migration
 {
     /**
      * Run the migrations.
@@ -13,7 +13,16 @@ class UsersInfo extends Migration
      */
     public function up()
     {
-        //
+        Schema::create('users_info', function (Blueprint $table) {
+            $table->increments('id');
+            $table->integer('user_id')->unsigned();
+            $table->string('language')->default('en');
+            $table->string('country')->default('us');
+            $table->timestamps();
+
+            $table->unique('user_id');
+            $table->foreign('user_id')->references('id')->on('users')->onDelet('cascade');
+        });
     }
 
     /**
@@ -23,6 +32,6 @@ class UsersInfo extends Migration
      */
     public function down()
     {
-        //
+        Schema::dropIfExists('users_info');
     }
 }
