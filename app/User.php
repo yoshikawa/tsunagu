@@ -2,216 +2,108 @@
 
 namespace App;
 
-use Illuminate\Auth\Authenticatable;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Auth\Passwords\CanResetPassword;
-use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
-use Illuminate\Contracts\Auth\CanResetPassword as CanResetPasswordContract;
-use Psy\Exception\ErrorException;
+use Illuminate\Notifications\Notifiable;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 
-class User extends Model implements AuthenticatableContract, CanResetPasswordContract
+class User extends Authenticatable
 {
-    
-    use Authenticatable, CanResetPassword;
-    
-    /**
-    * The database table used by the model.
-    *
-    * @var string
-    */
-    protected $table = 'users';
-    
-    /**
-    * The attributes that are mass assignable.
-    *
-    * @var array
-    */
-    protected $fillable = ['name', 'email', 'password'];
-    
-    /**
-    * The attributes excluded from the model's JSON form.
-    *
-    * @var array
-    */
-    protected $hidden = ['password', 'remember_token'];
-    
-    public function hasAlert($id)
-    {
-        foreach ($this->alerts as $alert) {
-            if ($alert->id == $id) {
-                return true;
-            }
-        }
-        
-        return false;
-    }
-    
-    public function follows($id)
-    {
-        foreach ($this->following as $following) {
-            if ($following->id == $id) {
-                return true;
-            }
-        }
-            
-        return false;
-    }
-    
-    public function muted($id)
-    {
-        foreach ($this->mutes as $mutes) {
-            if ($mutes->muted_id == $id) {
-                return true;
-            }
-        }
-        
-        return false;
-    }
-    
-    public function favorited($id)
-    {
-        foreach ($this->favorites as $favorite) {
-            if ($favorite->post_id == $id) {
-                return true;
-            }
-        }
-        
-        return false;
-    }
-    
-    public function posted($id)
-    {
-        foreach ($this->posts as $post) {
-            if ($post->id == $id) {
-                return true;
-            }
-        }
+    use Notifiable;
 
-        return false;
-    }
-    
-    public function reposted($id)
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array
+     */
+    protected $fillable = [
+        'name', 'email', 'password', 'avatar', 'cover', 'username'
+    ];
+
+    /**
+     * The attributes that should be hidden for arrays.
+     *
+     * @var array
+     */
+    protected $hidden = [
+        'password', 'remember_token', 'email'
+    ];
+
+    /**
+     * The attributes casting for serialization.
+     *
+     * @var array
+     */
+    protected $casts = ['id' => 'int'];
+
+    /**
+     * The accessors to append to the model's array form.
+     *
+     * @var array
+     */
+//    protected $appends = ['getIsFollowedAttribute'];
+
+
+    /**
+     * Accessors
+     */
+    public function getAvatarAttribute($val)
     {
-        foreach ($this->reposts as $repost) {
-            if ($repost->post_id == $id) {
-                return true;
-            }
-        }
-        
-        return false;
+        return is_null($val) ? asset('img/avatar-placeholder.svg') : $val;
     }
-    
-    public function settings()
+
+    public function getCoverAttribute($val)
     {
-        return $this->hasOne('App\Settings');
+        return is_null($val) ? asset('img/cover-placeholder.jpg') : $val;
     }
-    
-    public function posts()
+
+    /**
+     * Relations
+     */
+
+    public function tweets()
     {
-        return $this->hasMany('App\Post')->orderBy('created_at', 'DESC');
+        return $this->hasMany(Tweet::class)->withCount('replies', 'likes');
     }
-    
-    public function reposts()
+
+    public function likes()
     {
-        return $this->hasMany('App\RePost');
+        return $this->hasMany(Like::class);
     }
-    
-    public function favorites()
+
+    public function replies()
     {
-        return $this->hasMany('App\Favorite');
+        return $this->hasMany(Reply::class);
     }
-    
-    public function alerts()
-    {
-        return $this->hasMany('App\Alert')->orderBy('created_at', 'desc');
-    }
-    
-    public function mutes()
-    {
-        return $this->hasMany('App\Mute', 'user_id', 'id');
-    }
-    
-    public function followers()
-    {
-        return $this->belongsToMany('App\User', 'user_relations', 'followed_id', 'follower_id');
-    }
-    
-    public function following()
-    {
-        return $this->belongsToMany('App\User', 'user_relations', 'follower_id', 'followed_id');
-    }
-    
+
     public function profile()
     {
-        return $this->hasOne('App\Profile');
+        return $this->hasOne(Profile::class);
     }
-    
-    public function getDisplayNameAttribute()
+
+    public function followers()
     {
-        $available = false;
-        if (isset($this->profile->display_name) && !empty($this->profile->display_name)) {
-            $available = true;
-        }
-        
-        return $available ? $this->profile->display_name : $this->name;
+        return $this->belongsToMany(User::class, 'followers', 'follow_id', 'user_id')
+                    ->withPivot('follow_id', 'user_id')
+                    ->withTimestamps();
     }
-    
-    public function getWebsiteLinkAttribute()
+
+    public function following()
     {
-        $link = $this->profile->website;
-        
-        if (!preg_match('#^http(s)?://#', $link)) {
-            $link = 'http://' . $link;
-        }
-        
-        return $link;
+        return $this->belongsToMany(User::class, 'followers', 'user_id', 'follow_id')
+                    ->withPivot('follow_id', 'user_id')
+                    ->withTimestamps();
     }
-    
-    public function getWebsiteAttribute()
+
+    public function isFollowing($user_id = null)
     {
-        $link = parse_url($this->website_link);
-        return $link['host'];
+        return $this->following()
+            ->where('follow_id', $user_id ?: auth()->id() )
+            ->exists();
     }
-    
-    public function getUnreadAlertsAttribute()
+
+    public function getIsFollowedAttribute()
     {
-        if (env('APP_ENV') === 'production') {
-            return $this->alerts->where('read', '0');
-        } else {
-            return $this->alerts->where('read', 0);
-        }
-    }
-    
-    public function profileImage($size = 'small')
-    {
-        $webpath = 'images/no-thumb.png';
-        
-        try {
-            $contents = null;
-            switch ($size) {
-                case 'small':
-                    $contents = explode('/', $this->profile->image->small);
-                    break;
-                case 'tiny':
-                    $contents = explode('/', $this->profile->image->tiny);
-                    break;
-                case 'medium':
-                    $contents = explode('/', $this->profile->image->medium);
-                    break;
-                case 'large':
-                    $contents = explode('/', $this->profile->image->large);
-                    break;
-                case 'actual':
-                    $contents = explode('/', $this->profile->image->actual);
-                    break;
-            }
-            $filename = array_pop($contents);
-            $directory = array_pop($contents);
-            $webpath = implode('/', ['images', $directory, $filename]);
-        } catch (ErrorException $e) {
-            return error_log("Error upload!");
-        }
-        
-        return $webpath;
+        return $this->followers()
+            ->where('follow_id', $this->getKey() )
+            ->exists();
     }
 }
