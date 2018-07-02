@@ -35865,7 +35865,7 @@ var token = document.head.querySelector('meta[name="csrf-token"]');
 // Create an Instance
 var instance = __WEBPACK_IMPORTED_MODULE_0_axios___default.a.create({
     // change this url to your api
-    baseURL: '//localhost:8000/',
+    baseURL: '//localhost:80/',
 
     // any other headers you want to include
     headers: {

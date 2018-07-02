@@ -1,0 +1,34 @@
+version: '3'
+services:
+  nginx:
+    build:
+      context: ./docker/nginx
+    depends_on:
+      - php
+    ports:
+      - 80:80
+    volumes:
+      - ./src:/src
+
+  php:
+    container_name: laravel-app
+    build:
+      context: ./docker/phpfpm
+    environment:
+      DB_HOST: mysql
+    volumes:
+      - ./src:/src
+
+  mysql:
+    container_name: laravel-mysql
+    restart: always
+    image: mysql:5.7
+    volumes:
+      - ./docker/mysql:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_USER=tsunagu
+      - MYSQL_PASSWORD=password
+      - MYSQL_DATABASE=tsunagu
+    ports:
+      - 3306:3306
